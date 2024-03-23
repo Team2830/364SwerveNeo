@@ -32,6 +32,8 @@ public class Swerve extends SubsystemBase {
     public SwerveDriveOdometry swerveOdometry;
     public SwerveModule[] mSwerveMods;
     public AHRS gyro;
+    private PIDController mTranslationXController = new PIDController(0.01, 0, 0);
+    private PIDController mTranslationYController = new PIDController(0.01, 0, 0);
     private PIDController mAngleController = new PIDController(0.6, 0, 0.01);
     private double desiredAngle = 0;
 
@@ -133,6 +135,33 @@ public class Swerve extends SubsystemBase {
         }
     }    
 
+    public void driveWithPID(Translation2d translation, double headingX, double headingY) {
+        if(Math.hypot(headingX, headingY) > 0.3) {
+            desiredAngle = Math.atan2(headingX, headingY);
+        }
+
+        double rotation = mAngleController.calculate(getGyroYaw().getDegrees(), desiredAngle);
+        rotation = MathUtil.clamp(rotation, -Constants.Swerve.maxAngularVelocity, Constants.Swerve.maxAngularVelocity);
+        double x = mTranslationXController.calculate(getFieldOrientedChassisSpeeds().vxMetersPerSecond, translation.getX() * Constants.Swerve.maxSpeed)
+            + translation.getX();
+        double y = mTranslationXController.calculate(getFieldOrientedChassisSpeeds().vyMetersPerSecond, translation.getX() * Constants.Swerve.maxSpeed)
+            + translation.getY();
+
+        SwerveModuleState[] swerveModuleStates =
+            Constants.Swerve.swerveKinematics.toSwerveModuleStates(
+                ChassisSpeeds.fromFieldRelativeSpeeds(
+                                    x, 
+                                    y, 
+                                    rotation, 
+                                    getHeading()
+                                ));
+        SwerveDriveKinematics.desaturateWheelSpeeds(swerveModuleStates, Constants.Swerve.maxSpeed);
+
+        for(SwerveModule mod : mSwerveMods){
+            mod.setDesiredState(swerveModuleStates[mod.moduleNumber], false);
+        }
+    }    
+
     /* Used by SwerveControllerCommand in Auto */
     public void setModuleStates(SwerveModuleState[] desiredStates) {
         SwerveDriveKinematics.desaturateWheelSpeeds(desiredStates, Constants.Swerve.maxSpeed);
@@ -164,6 +193,11 @@ public class Swerve extends SubsystemBase {
 
     public ChassisSpeeds getRobotVelocity() {
         return Constants.Swerve.swerveKinematics.toChassisSpeeds(getModuleStates());
+    }
+
+    public ChassisSpeeds getFieldOrientedChassisSpeeds() {
+        ChassisSpeeds robotOrientedSpeeds = Constants.Swerve.swerveKinematics.toChassisSpeeds(getModuleStates());
+        return ChassisSpeeds.fromRobotRelativeSpeeds(robotOrientedSpeeds, getGyroYaw());
     }
 
     public void setChassisSpeeds(ChassisSpeeds speeds)
