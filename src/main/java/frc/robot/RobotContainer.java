@@ -1,25 +1,48 @@
 package frc.robot;
 
+import java.io.File;
+import java.util.Optional;
+import java.util.function.DoubleSupplier;
+
+import com.pathplanner.lib.auto.AutoBuilder;
+import com.pathplanner.lib.auto.NamedCommands;
+
+import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.DriverStation.Alliance;
+import edu.wpi.first.wpilibj.Filesystem;
 import edu.wpi.first.wpilibj.GenericHID;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.XboxController;
+import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
+import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.JoystickButton;
-
+import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.autos.*;
 import frc.robot.commands.*;
 import frc.robot.subsystems.*;
 
 /**
- * This class is where the bulk of the robot should be declared. Since Command-based is a
- * "declarative" paradigm, very little robot logic should actually be handled in the {@link Robot}
- * periodic methods (other than the scheduler calls). Instead, the structure of the robot (including
+ * This class is where the bulk of the robot should be declared. Since
+ * Command-based is a
+ * "declarative" paradigm, very little robot logic should actually be handled in
+ * the {@link Robot}
+ * periodic methods (other than the scheduler calls). Instead, the structure of
+ * the robot (including
  * subsystems, commands, and button mappings) should be declared here.
  */
 public class RobotContainer {
-    /* Controllers */
-    private final Joystick driver = new Joystick(0);
+    private final Shooter m_Shooter = new Shooter();
+    private final Intake m_Intake = new Intake();
+    private final ShooterAdjuster m_ShooterAdjuster = new ShooterAdjuster();
+
+    // Replace with CommandPS4Controller or CommandJoystick if needed
+    CommandXboxController driverXbox = new CommandXboxController(0);
+    CommandXboxController operatorXbox = new CommandXboxController(1);
+    // CommandJoystick pretendJoystic = new CommandJoystick(2);
+    private final SendableChooser<Command> autoChooser;
 
     /* Drive Controls */
     private final int translationAxis = XboxController.Axis.kLeftY.value;
@@ -27,40 +50,128 @@ public class RobotContainer {
     private final int headingXAxis = XboxController.Axis.kRightX.value;
     private final int headingYAxis = XboxController.Axis.kRightY.value;
 
-    /* Driver Buttons */
-    private final JoystickButton zeroGyro = new JoystickButton(driver, XboxController.Button.kY.value);
-    private final JoystickButton robotCentric = new JoystickButton(driver, XboxController.Button.kLeftBumper.value);
+    private final Trigger robotCentric = driverXbox.leftBumper();
 
     /* Subsystems */
     private final Swerve s_Swerve = new Swerve();
 
-
-    /** The container for the robot. Contains subsystems, OI devices, and commands. */
+    /**
+     * The container for the robot. Contains subsystems, OI devices, and commands.
+     */
     public RobotContainer() {
         s_Swerve.setDefaultCommand(
-            new TeleopSwerveAngle(
-                s_Swerve, 
-                () -> -driver.getRawAxis(translationAxis), 
-                () -> -driver.getRawAxis(strafeAxis), 
-                () -> -driver.getRawAxis(headingXAxis), 
-                () -> -driver.getRawAxis(headingYAxis),
-                () -> robotCentric.getAsBoolean()
-            )
-        );
+                new TeleopSwerveAngle(
+                        s_Swerve,
+                        () -> driverXbox.getRawAxis(translationAxis),
+                        () -> driverXbox.getRawAxis(strafeAxis),
+                        () -> -driverXbox.getRawAxis(headingXAxis),
+                        () -> -driverXbox.getRawAxis(headingYAxis),
+                        () -> robotCentric.getAsBoolean()));
 
+        SmartDashboard.putNumber("Amp speed", .25);
+        // pretendJoystic.button(1).onTrue(getAutonomousCommand());
+        // registers Named Commands
+        NamedCommands.registerCommand("IntakeOff", new IntakeOff(m_Intake));
+        NamedCommands.registerCommand("IntakeOn", new IntakeOn(m_Intake, false));
+        NamedCommands.registerCommand("PrepareToShoot", new PrepareToShoot(m_Shooter));
+        NamedCommands.registerCommand("Shoot", new Shoot(m_Shooter, 12, 12));
+        NamedCommands.registerCommand("Shoot Auto", new ShootAuto(m_Shooter));
+        autoChooser = AutoBuilder.buildAutoChooser();
+        SmartDashboard.putData("Auto Chooser", autoChooser);
         // Configure the button bindings
         configureButtonBindings();
     }
 
     /**
-     * Use this method to define your button->command mappings. Buttons can be created by
+     * Use this method to define your button->command mappings. Buttons can be
+     * created by
      * instantiating a {@link GenericHID} or one of its subclasses ({@link
-     * edu.wpi.first.wpilibj.Joystick} or {@link XboxController}), and then passing it to a {@link
+     * edu.wpi.first.wpilibj.Joystick} or {@link XboxController}), and then passing
+     * it to a {@link
      * edu.wpi.first.wpilibj2.command.button.JoystickButton}.
      */
     private void configureButtonBindings() {
+        // Schedule `ExampleCommand` when `exampleCondition` changes to `true`
+
+        // driverXbox.back().onTrue(new
+        // InstantComma''''''''''''''''''''''''''''''''''''''''''''''''''nd(drivebase::addFakeVisionReading));
+
+        // Intake Commands
+        operatorXbox.start().whileTrue(new IntakeFromShooter(m_Shooter))
+                .onTrue(new InstantCommand(() -> {
+                    m_ShooterAdjuster.goToZero();
+                }, m_ShooterAdjuster));
+
+        driverXbox.rightBumper().whileTrue(new IntakeOn(m_Intake, true))
+                .whileTrue(new InstantCommand(() -> {
+                    m_Shooter.setBottomMotorVolts(.05 * 12.0);
+                }, m_Shooter))
+                .onTrue(new InstantCommand(() -> {
+                    m_ShooterAdjuster.goToZero();
+                }, m_ShooterAdjuster));
+
+        operatorXbox.leftTrigger().whileTrue(new IntakeReverse(m_Intake));
+
+        // operatorXbox.rightBumper().whileTrue(new InstantCommand(() ->
+        // {m_ShooterAdjuster.setSpeed(operatorXbox.getRightY() * .5);},
+        // m_ShooterAdjuster));
+
+        // Shooter Commands
+
+        DoubleSupplier mySupplier = new DoubleSupplier() {
+            @Override
+            public double getAsDouble() {
+                // TODO Auto-generated method stub
+                return SmartDashboard.getNumber("Amp speed", .25) * 12.0;
+            }
+
+        };
+
+        driverXbox.rightTrigger().whileTrue(new Shoot(m_Shooter, 11, 11));
+        driverXbox.leftTrigger().whileTrue(new InstantCommand(() -> {
+            m_Shooter.ampShot();
+        }, m_Shooter))
+                .onFalse(new InstantCommand(() -> {
+                    m_Shooter.shooterOff();
+                }, m_Shooter));
+
+        operatorXbox.rightTrigger().onTrue(new PrepareToShoot(m_Shooter));
+
+        driverXbox.leftBumper().onTrue(new InstantCommand(() -> {
+            m_ShooterAdjuster.setPosition(Constants.ShooterAngles.UNDER_STAGE);
+        }, m_ShooterAdjuster));
+        operatorXbox.y().onTrue(new InstantCommand(() -> {
+            m_ShooterAdjuster.goToZero();
+        }, m_ShooterAdjuster));
+        operatorXbox.a().onTrue(new InstantCommand(() -> {
+            m_ShooterAdjuster.setPosition(Constants.ShooterAngles.AMP);
+        }, m_ShooterAdjuster));
+
+        operatorXbox.povUp()
+                .onTrue((new InstantCommand(() -> m_ShooterAdjuster.setPosition(Constants.ShooterAngles.PEDESTAL))));
+        // operatorXbox.povLeft().onTrue((new
+        // InstantCommand(()->m_ShooterAdjuster.setPosition(Constants.ShooterAngles.AMP_ZONE))));
+
+        // operatorXbox.povUp().whileTrue(new ShooterUp(m_ShooterAdjuster));
+        // operatorXbox.povDown().whileTrue(new ShooterDown(m_ShooterAdjuster));
+        // operatorXbox.a().onTrue((new
+        // InstantCommand(()->m_ShooterAdjuster.setPosition(.90)))); //Drive Commands
         /* Driver Buttons */
-        zeroGyro.onTrue(new InstantCommand(() -> s_Swerve.zeroHeading()));
+        driverXbox.start().onTrue(new InstantCommand(() -> s_Swerve.resetGyro()));
+
+        Optional<Alliance> alliance = DriverStation.getAlliance();
+        if (/* alliance.isPresent() && alliance.get() == Alliance.Red */false) {
+            driverXbox.y().onTrue((new InstantCommand(() -> s_Swerve.setDesiredAngle(180)))); // DEFAULT
+            driverXbox.a().onTrue((new InstantCommand(() -> s_Swerve.setDesiredAngle(180 - 47)))); // AMP ZONE
+            driverXbox.b().onTrue((new InstantCommand(() -> s_Swerve.setDesiredAngle(-90)))); // AMP
+            driverXbox.x().onTrue((new InstantCommand(() -> s_Swerve.setDesiredAngle(180 + 26)))); // PODIUM
+
+        } else {
+            driverXbox.y().onTrue((new InstantCommand(() -> s_Swerve.setDesiredAngle(0)))); // DEFAULT
+            driverXbox.a().onTrue((new InstantCommand(() -> s_Swerve.setDesiredAngle(47)))); // AMP ZONE
+            driverXbox.x().onTrue((new InstantCommand(() -> s_Swerve.setDesiredAngle(-90)))); // AMP
+            driverXbox.b().onTrue((new InstantCommand(() -> s_Swerve.setDesiredAngle(-26)))); // PODIUM
+        }
     }
 
     /**
@@ -69,7 +180,21 @@ public class RobotContainer {
      * @return the command to run in autonomous
      */
     public Command getAutonomousCommand() {
-        // An ExampleCommand will run in autonomous
-        return new exampleAuto(s_Swerve);
+        // return drivebase.sysIdDriveMotorCommand();
+        // An example command will be run in autonomousas
+        // return new PathPlannerAuto("4-Auto");
+        // return new PathPlannerAuto("Straight Auto");
+        // return new ShootAuto(m_Shooter);
+        return autoChooser.getSelected();
+    }
+
+    public void setDriveMode() {
+        Optional<Alliance> alliance = DriverStation.getAlliance();
+        if (alliance.isPresent() && alliance.get() == Alliance.Red) {
+            s_Swerve.setDesiredAngle(180); // DEFAULT
+        } else {
+            s_Swerve.setDesiredAngle(0); // DEFAULT
+        }
+        // drivebase.setDefaultCommand();
     }
 }

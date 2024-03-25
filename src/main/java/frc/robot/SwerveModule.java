@@ -50,9 +50,9 @@ public class SwerveModule {
         mAnglePIDController.setPositionPIDWrappingEnabled(true);
         mAnglePIDController.setPositionPIDWrappingMaxInput(360);
         mAnglePIDController.setPositionPIDWrappingMinInput(0);
-        mAnglePIDController.setP(0.004);
+        mAnglePIDController.setP(0.045);
         mAnglePIDController.setI(0);
-        mAnglePIDController.setD(1.5);
+        mAnglePIDController.setD(0); //1.5
         mAnglePIDController.setIZone(5);
         mAngleMotor.setIdleMode(IdleMode.kCoast);
         mAngleMotor.setSmartCurrentLimit(20);
@@ -62,6 +62,7 @@ public class SwerveModule {
         mDriveMotor = new CANSparkMax(moduleConstants.driveMotorID, MotorType.kBrushless);
         mDriveEncoder = mDriveMotor.getEncoder();
         mDriveMotor.restoreFactoryDefaults();
+        mDriveMotor.setInverted(true);
         mDrivePIDController = mDriveMotor.getPIDController();
         mDrivePIDController.setP(0.032);
         mDrivePIDController.setI(0);
