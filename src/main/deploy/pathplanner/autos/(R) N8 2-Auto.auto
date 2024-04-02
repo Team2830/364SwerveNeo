@@ -2,15 +2,21 @@
   "version": 1.0,
   "startingPose": {
     "position": {
-      "x": 0.973104168430559,
-      "y": 4.209895599278378
+      "x": 0.5521146085027211,
+      "y": 4.1046482092964185
     },
-    "rotation": -55.0
+    "rotation": 0.0
   },
   "command": {
     "type": "sequential",
     "data": {
       "commands": [
+        {
+          "type": "path",
+          "data": {
+            "pathName": "Side Preshoot"
+          }
+        },
         {
           "type": "deadline",
           "data": {

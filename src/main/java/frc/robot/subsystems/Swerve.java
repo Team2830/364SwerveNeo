@@ -14,6 +14,7 @@ import com.ctre.phoenix6.hardware.Pigeon2;
 import com.kauailabs.navx.frc.AHRS;
 import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.util.HolonomicPathFollowerConfig;
+import com.pathplanner.lib.util.PathPlannerLogging;
 import com.pathplanner.lib.util.ReplanningConfig;
 
 import edu.wpi.first.math.MathUtil;
@@ -23,7 +24,9 @@ import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
+import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.I2C.Port;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -69,7 +72,7 @@ public class Swerve extends SubsystemBase {
                                             // Rotation PID constants
                                             4.5,
                                             // Max module speed, in m/s
-                                            Math.hypot(10.375, 10.375),
+                                            Math.hypot(Units.inchesToMeters(10.375), Units.inchesToMeters(10.375)),
                                             // Drive base radius in meters. Distance from robot center to furthest module.
                                             new ReplanningConfig()
                                             // Default path replanning config. See the API for the options here
@@ -108,18 +111,25 @@ public class Swerve extends SubsystemBase {
 
     public void drive(Translation2d translation, double headingX, double headingY, boolean fieldRelative, boolean isOpenLoop) {
 
+        double allianceMultiplier = 1;
+        if(DriverStation.getAlliance().isPresent() && DriverStation.getAlliance().get() == Alliance.Red){
+            headingX *= -1;
+            headingY *= -1;
+            allianceMultiplier = -1;
+        }
+
         if(Math.hypot(headingX, headingY) > 0.3) {
             desiredAngle = Math.toDegrees(Math.atan2(headingX, headingY));
         }
 
-        double rotation = mAngleController.calculate(getGyroYaw().getDegrees(), desiredAngle);
+        double rotation = mAngleController.calculate(getHeading().getDegrees(), desiredAngle);
         rotation = MathUtil.clamp(rotation, -Constants.Swerve.maxAngularVelocity, Constants.Swerve.maxAngularVelocity);
 
         SwerveModuleState[] swerveModuleStates =
             Constants.Swerve.swerveKinematics.toSwerveModuleStates(
                 fieldRelative ? ChassisSpeeds.fromFieldRelativeSpeeds(
-                                    -translation.getX(), 
-                                    -translation.getY(), 
+                                    allianceMultiplier * -translation.getX(), 
+                                    allianceMultiplier * -translation.getY(), 
                                     rotation, 
                                     getHeading()
                                 )
@@ -187,7 +197,7 @@ public class Swerve extends SubsystemBase {
     }
 
     public void setHeading(Rotation2d heading){
-        swerveOdometry.resetPosition(getGyroYaw(), getModulePositions(), new Pose2d(getPose().getTranslation(), heading));
+        swerveOdometry.resetPosition(getHeading(), getModulePositions(), new Pose2d(getPose().getTranslation(), heading));
     }
 
     public void zeroHeading(){
@@ -195,11 +205,15 @@ public class Swerve extends SubsystemBase {
     }
 
     public void resetGyro(){
+        gyro.setAngleAdjustment(0);
         gyro.reset();
         gyro.zeroYaw();
-        gyro.setAngleAdjustment(0);
         setDesiredAngle(0);
         System.out.println("Gyro has reset************");
+    }
+
+    public Rotation2d getGyroAngle(){
+        return Rotation2d.fromDegrees(gyro.getAngle()).unaryMinus();
     }
 
     public Rotation2d getGyroYaw() {

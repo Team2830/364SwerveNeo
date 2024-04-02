@@ -37,7 +37,7 @@ public class TeleopSwerveAngle extends Command {
         double strafeVal = MathUtil.applyDeadband(strafeSup.getAsDouble(), Constants.stickDeadband);
         double headingXVal = headingXSupplier.getAsDouble();
         double headingYVal = headingYSupplier.getAsDouble();
-
+        
         /* Drive */
         s_Swerve.drive(
             new Translation2d(translationVal, strafeVal).times(Constants.Swerve.maxSpeed), 

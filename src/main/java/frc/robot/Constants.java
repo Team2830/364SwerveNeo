@@ -19,8 +19,8 @@ public final class Constants {
 
     public static final class Swerve {
         public static final class AutonConstants {
-            public static final PIDConstants TRANSLATION_PID = new PIDConstants(.7, 0, 0); // P: .7
-            public static final PIDConstants ANGLE_PID = new PIDConstants(.8, 0, 0.01); // P: .4
+            public static final PIDConstants TRANSLATION_PID = new PIDConstants(11.2, 0, 0); // P: .7
+            public static final PIDConstants ANGLE_PID = new PIDConstants(8.0, 0, 0.01); // P: .4
         }
 
         public static final int pigeonID = 1;
