@@ -70,7 +70,7 @@ public class Swerve extends SubsystemBase {
                                             // Translation PID constants
                                             AutonConstants.ANGLE_PID,
                                             // Rotation PID constants
-                                            4.5,
+                                            4.5,//4.5 original
                                             // Max module speed, in m/s
                                             Math.hypot(Units.inchesToMeters(10.375), Units.inchesToMeters(10.375)),
                                             // Drive base radius in meters. Distance from robot center to furthest module.
@@ -92,14 +92,14 @@ public class Swerve extends SubsystemBase {
         SwerveModuleState[] swerveModuleStates =
             Constants.Swerve.swerveKinematics.toSwerveModuleStates(
                 fieldRelative ? ChassisSpeeds.fromFieldRelativeSpeeds(
-                                    -translation.getX(), 
-                                    -translation.getY(), 
+                                    -translation.getX()/2, 
+                                    -translation.getY()/2, 
                                     rotation, 
                                     getHeading()
                                 )
                                 : new ChassisSpeeds(
-                                    -translation.getX(), 
-                                    -translation.getY(), 
+                                    -translation.getX()/2, 
+                                    -translation.getY()/2, 
                                     rotation)
                                 );
         SwerveDriveKinematics.desaturateWheelSpeeds(swerveModuleStates, Constants.Swerve.maxSpeed);
@@ -118,7 +118,7 @@ public class Swerve extends SubsystemBase {
             allianceMultiplier = -1;
         }
 
-        if(Math.hypot(headingX, headingY) > 0.3) {
+        if(Math.hypot(headingX, headingY) > 0.5) {
             desiredAngle = Math.toDegrees(Math.atan2(headingX, headingY));
         }
 

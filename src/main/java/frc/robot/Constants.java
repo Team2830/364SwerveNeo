@@ -94,7 +94,7 @@ public final class Constants {
 
         /* Swerve Profiling Values */
         /** Meters per Second */
-        public static final double maxSpeed = 4.5; // TODO: This must be tuned to specific robot
+        public static final double maxSpeed = 4.5; // TODO: This must be tuned to specific robot (4.5)
         /** Radians per Second */
         public static final double maxAngularVelocity = 10.0; // TODO: This must be tuned to specific robot
 
@@ -173,7 +173,7 @@ public final class Constants {
         public static final double UNDER_STAGE = 26;
         public static final double SUBWOOFER = 2;
         public static final double AMP = 10.75;
-        public static final double PEDESTAL = 16.5;
+        public static final double PEDESTAL = 15.5;
         public static final double AMP_ZONE = 10;
 
     }

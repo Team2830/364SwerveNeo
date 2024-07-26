@@ -152,7 +152,8 @@ public class RobotContainer {
 
         };
 
-        driverXbox.rightTrigger().whileTrue(new Shoot(m_Shooter, 11, 11));
+        driverXbox.rightTrigger().whileTrue(new Shoot(m_Shooter, 11
+    , 11));//both were 11
         driverXbox.leftTrigger().whileTrue(new InstantCommand(() -> {
             m_Shooter.ampShot();
         }, m_Shooter))
@@ -179,7 +180,7 @@ public class RobotContainer {
 
         // operatorXbox.povUp().whileTrue(new ShooterUp(m_ShooterAdjuster));
         // operatorXbox.povDown().whileTrue(new ShooterDown(m_ShooterAdjuster));
-        // operatorXbox.a().onTrue((new
+       // operatorXbox.a().onTrue((new
         // InstantCommand(()->m_ShooterAdjuster.setPosition(.90)))); //Drive Commands
         /* Driver Buttons */
         //driverXbox.start().onTrue(new InstantCommand(() -> s_Swerve.resetGyro()));
